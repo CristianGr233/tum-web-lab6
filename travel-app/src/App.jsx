@@ -8,7 +8,7 @@ export default function App() {
       name: 'Tokyo',
       country: 'Japan',
       lat: 35.6764,
-      lng: 139.6500,
+      lng: 139.65,
       visited: false
     },
     {
@@ -32,6 +32,9 @@ export default function App() {
     lat: '',
     lng: ''
   })
+
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('All')
 
   useEffect(() => {
     localStorage.setItem(
@@ -80,11 +83,52 @@ export default function App() {
     )
   }
 
+  // FILTER LOGIC
+  const filtered = destinations.filter((d) => {
+    const matchSearch =
+      d.name.toLowerCase().includes(search.toLowerCase()) ||
+      d.country.toLowerCase().includes(search.toLowerCase())
+
+    const matchFilter =
+      filter === 'All'
+        ? true
+        : filter === 'Visited'
+        ? d.visited
+        : !d.visited
+
+    return matchSearch && matchFilter
+  })
+
   return (
     <div className="min-h-screen bg-slate-100 p-6">
+
       <h1 className="text-3xl font-bold mb-4">
         Travel Tracker
       </h1>
+
+      {/* SEARCH + FILTER */}
+      <div className="flex gap-2 mb-4 max-w-md">
+        <input
+          placeholder="Search..."
+          value={search}
+          onChange={(e) =>
+            setSearch(e.target.value)
+          }
+          className="border p-2 flex-1"
+        />
+
+        <select
+          value={filter}
+          onChange={(e) =>
+            setFilter(e.target.value)
+          }
+          className="border p-2"
+        >
+          <option>All</option>
+          <option>Visited</option>
+          <option>Wishlist</option>
+        </select>
+      </div>
 
       {/* FORM */}
       <form
@@ -139,7 +183,7 @@ export default function App() {
           attribution="&copy; OpenStreetMap contributors"
         />
 
-        {destinations.map((d) => (
+        {filtered.map((d) => (
           <Marker
             key={d.id}
             position={[d.lat, d.lng]}
