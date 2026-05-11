@@ -26,6 +26,10 @@ export default function App() {
     return saved ? JSON.parse(saved) : defaultDestinations
   })
 
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('travel-theme') === 'dark'
+  })
+
   const [form, setForm] = useState({
     name: '',
     country: '',
@@ -36,12 +40,21 @@ export default function App() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
 
+  // persist destinations
   useEffect(() => {
     localStorage.setItem(
       'travel-destinations',
       JSON.stringify(destinations)
     )
   }, [destinations])
+
+  // persist theme
+  useEffect(() => {
+    localStorage.setItem(
+      'travel-theme',
+      darkMode ? 'dark' : 'light'
+    )
+  }, [darkMode])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -83,7 +96,6 @@ export default function App() {
     )
   }
 
-  // FILTER LOGIC
   const filtered = destinations.filter((d) => {
     const matchSearch =
       d.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -100,126 +112,148 @@ export default function App() {
   })
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
+    <div
+      className={`min-h-screen transition-colors ${
+        darkMode
+          ? 'bg-zinc-900 text-white'
+          : 'bg-slate-100 text-black'
+      }`}
+    >
+      <div className="max-w-5xl mx-auto p-6">
 
-      <h1 className="text-3xl font-bold mb-4">
-        Travel Tracker
-      </h1>
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">
+            Travel Tracker
+          </h1>
 
-      {/* SEARCH + FILTER */}
-      <div className="flex gap-2 mb-4 max-w-md">
-        <input
-          placeholder="Search..."
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-          className="border p-2 flex-1"
-        />
-
-        <select
-          value={filter}
-          onChange={(e) =>
-            setFilter(e.target.value)
-          }
-          className="border p-2"
-        >
-          <option>All</option>
-          <option>Visited</option>
-          <option>Wishlist</option>
-        </select>
-      </div>
-
-      {/* FORM */}
-      <form
-        onSubmit={handleSubmit}
-        className="grid gap-2 mb-6 max-w-md"
-      >
-        <input
-          placeholder="Name"
-          value={form.name}
-          onChange={(e) =>
-            setForm({ ...form, name: e.target.value })
-          }
-        />
-
-        <input
-          placeholder="Country"
-          value={form.country}
-          onChange={(e) =>
-            setForm({ ...form, country: e.target.value })
-          }
-        />
-
-        <input
-          placeholder="Latitude"
-          value={form.lat}
-          onChange={(e) =>
-            setForm({ ...form, lat: e.target.value })
-          }
-        />
-
-        <input
-          placeholder="Longitude"
-          value={form.lng}
-          onChange={(e) =>
-            setForm({ ...form, lng: e.target.value })
-          }
-        />
-
-        <button className="bg-blue-600 text-white p-2 rounded">
-          Add Destination
-        </button>
-      </form>
-
-      {/* MAP */}
-      <MapContainer
-        center={[20, 0]}
-        zoom={2}
-        style={{ height: '500px', width: '100%' }}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
-        />
-
-        {filtered.map((d) => (
-          <Marker
-            key={d.id}
-            position={[d.lat, d.lng]}
+          <button
+            onClick={() =>
+              setDarkMode(!darkMode)
+            }
+            className="px-4 py-2 rounded bg-indigo-600 text-white"
           >
-            <Popup>
-              <div>
-                <b>{d.name}</b>
-                <br />
-                {d.country}
-                <br /><br />
+            {darkMode ? 'Light Mode' : 'Dark Mode'}
+          </button>
+        </div>
 
-                <button
-                  onClick={() =>
-                    toggleVisited(d.id)
-                  }
-                >
-                  {d.visited
-                    ? 'Visited'
-                    : 'Mark Visited'}
-                </button>
+        {/* SEARCH + FILTER */}
+        <div className="flex gap-2 mb-4 max-w-md">
+          <input
+            placeholder="Search..."
+            value={search}
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
+            className="border p-2 flex-1 text-black"
+          />
 
-                <br />
+          <select
+            value={filter}
+            onChange={(e) =>
+              setFilter(e.target.value)
+            }
+            className="border p-2 text-black"
+          >
+            <option>All</option>
+            <option>Visited</option>
+            <option>Wishlist</option>
+          </select>
+        </div>
 
-                <button
-                  onClick={() =>
-                    removeDestination(d.id)
-                  }
-                  style={{ color: 'red' }}
-                >
-                  Delete
-                </button>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+        {/* FORM */}
+        <form
+          onSubmit={handleSubmit}
+          className="grid gap-2 mb-6 max-w-md"
+        >
+          <input
+            placeholder="Name"
+            value={form.name}
+            onChange={(e) =>
+              setForm({ ...form, name: e.target.value })
+            }
+          />
+
+          <input
+            placeholder="Country"
+            value={form.country}
+            onChange={(e) =>
+              setForm({ ...form, country: e.target.value })
+            }
+          />
+
+          <input
+            placeholder="Latitude"
+            value={form.lat}
+            onChange={(e) =>
+              setForm({ ...form, lat: e.target.value })
+            }
+          />
+
+          <input
+            placeholder="Longitude"
+            value={form.lng}
+            onChange={(e) =>
+              setForm({ ...form, lng: e.target.value })
+            }
+          />
+
+          <button className="bg-blue-600 text-white p-2 rounded">
+            Add Destination
+          </button>
+        </form>
+
+        {/* MAP */}
+        <div className="rounded-xl overflow-hidden shadow">
+          <MapContainer
+            center={[20, 0]}
+            zoom={2}
+            style={{ height: '500px', width: '100%' }}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution="&copy; OpenStreetMap contributors"
+            />
+
+            {filtered.map((d) => (
+              <Marker
+                key={d.id}
+                position={[d.lat, d.lng]}
+              >
+                <Popup>
+                  <div>
+                    <b>{d.name}</b>
+                    <br />
+                    {d.country}
+                    <br /><br />
+
+                    <button
+                      onClick={() =>
+                        toggleVisited(d.id)
+                      }
+                    >
+                      {d.visited
+                        ? 'Visited'
+                        : 'Mark Visited'}
+                    </button>
+
+                    <br />
+
+                    <button
+                      onClick={() =>
+                        removeDestination(d.id)
+                      }
+                      style={{ color: 'red' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </div>
+      </div>
     </div>
   )
 }
