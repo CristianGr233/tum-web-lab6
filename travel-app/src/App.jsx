@@ -7,17 +7,27 @@ export default function App() {
       id: 1,
       name: 'Tokyo',
       country: 'Japan',
+      category: 'City',
+      rating: 5,
+      visited: false,
+      notes: 'Visit Akihabara and Shibuya',
       lat: 35.6764,
       lng: 139.65,
-      visited: false
+      image:
+        'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=1200&auto=format&fit=crop'
     },
     {
       id: 2,
       name: 'Santorini',
       country: 'Greece',
+      category: 'Beach',
+      rating: 4,
+      visited: true,
+      notes: 'Beautiful sunset views',
       lat: 36.3932,
       lng: 25.4615,
-      visited: true
+      image:
+        'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?q=80&w=1200&auto=format&fit=crop'
     }
   ]
 
@@ -26,92 +36,155 @@ export default function App() {
     return saved ? JSON.parse(saved) : defaultDestinations
   })
 
-  const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem('travel-theme') === 'dark'
-  })
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('All')
+  const [darkMode, setDarkMode] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+
+  const [locationResults, setLocationResults] = useState([])
+  const [locationQuery, setLocationQuery] = useState('')
 
   const [form, setForm] = useState({
     name: '',
     country: '',
+    category: 'City',
+    rating: 3,
+    notes: '',
+    image: '',
     lat: '',
     lng: ''
   })
 
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('All')
-
-  const [locationQuery, setLocationQuery] = useState('')
-  const [locationResults, setLocationResults] = useState([])
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('travel-theme')
+    if (savedTheme === 'dark') setDarkMode(true)
+  }, [])
 
   useEffect(() => {
-    localStorage.setItem(
-      'travel-destinations',
-      JSON.stringify(destinations)
-    )
+    localStorage.setItem('travel-destinations', JSON.stringify(destinations))
   }, [destinations])
 
   useEffect(() => {
-    localStorage.setItem(
-      'travel-theme',
-      darkMode ? 'dark' : 'light'
-    )
+    localStorage.setItem('travel-theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
+
+  const scrollToList = () => {
+    const el = document.getElementById('destination-list-section')
+    if (el) el.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const searchLocation = async () => {
+    if (!locationQuery.trim()) return
+
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        locationQuery
+      )}`
+    )
+
+    const data = await res.json()
+    setLocationResults(data)
+  }
+
+  // FIXED Wikipedia image fetch (no broken thumbnails)
+  const fetchPlaceImage = async (name) => {
+    try {
+      const clean = name.split(',')[0]
+
+      const res = await fetch(
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`
+      )
+
+      const data = await res.json()
+      return data?.thumbnail?.source || null
+    } catch {
+      return null
+    }
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
 
     if (!form.name || !form.country) return
 
-    const newDestination = {
-      id: Date.now(),
-      name: form.name,
-      country: form.country,
-      lat: parseFloat(form.lat),
-      lng: parseFloat(form.lng),
-      visited: false
-    }
+    const imageValue =
+      form.image && form.image.length > 0
+        ? form.image
+        : 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200&auto=format&fit=crop'
 
-    setDestinations([newDestination, ...destinations])
+    if (editingId) {
+      setDestinations(
+        destinations.map((d) =>
+          d.id === editingId
+            ? {
+                ...d,
+                ...form,
+                lat: parseFloat(form.lat),
+                lng: parseFloat(form.lng),
+                image: imageValue
+              }
+            : d
+        )
+      )
+      setEditingId(null)
+    } else {
+      setDestinations([
+        {
+          id: Date.now(),
+          ...form,
+          lat: parseFloat(form.lat),
+          lng: parseFloat(form.lng),
+          image: imageValue,
+          visited: false
+        },
+        ...destinations
+      ])
+    }
 
     setForm({
       name: '',
       country: '',
+      category: 'City',
+      rating: 3,
+      notes: '',
+      image: '',
       lat: '',
       lng: ''
     })
+
+    setLocationQuery('')
+    setLocationResults([])
   }
 
   const removeDestination = (id) => {
-    setDestinations(
-      destinations.filter((d) => d.id !== id)
-    )
+    setDestinations(destinations.filter((d) => d.id !== id))
   }
 
   const toggleVisited = (id) => {
     setDestinations(
       destinations.map((d) =>
-        d.id === id
-          ? { ...d, visited: !d.visited }
-          : d
+        d.id === id ? { ...d, visited: !d.visited } : d
       )
     )
   }
 
-  const searchLocation = async () => {
-    if (!locationQuery.trim()) return
+  const startEdit = (d) => {
+    setEditingId(d.id)
+    setForm(d)
+  }
 
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          locationQuery
-        )}`
-      )
-
-      const data = await res.json()
-      setLocationResults(data)
-    } catch (err) {
-      console.error(err)
-    }
+  const cancelEdit = () => {
+    setEditingId(null)
+    setForm({
+      name: '',
+      country: '',
+      category: 'City',
+      rating: 3,
+      notes: '',
+      image: '',
+      lat: '',
+      lng: ''
+    })
   }
 
   const filtered = destinations.filter((d) => {
@@ -130,46 +203,168 @@ export default function App() {
   })
 
   return (
-    <div
-      className={`min-h-screen transition-colors ${
-        darkMode
-          ? 'bg-zinc-900 text-white'
-          : 'bg-slate-100 text-black'
-      }`}
-    >
-      <div className="max-w-5xl mx-auto p-6">
+    <div className={darkMode ? 'bg-zinc-950 text-white min-h-screen' : 'bg-slate-100 text-slate-900 min-h-screen'}>
+      <div className="max-w-7xl mx-auto p-6">
 
         {/* HEADER */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">
-            Travel Tracker
-          </h1>
+        <div className="flex justify-between mb-8">
+          <h1 className="text-4xl font-bold">Travel Tracker</h1>
 
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className="px-4 py-2 rounded bg-indigo-600 text-white"
+            className="bg-indigo-600 text-white px-4 py-2 rounded-xl"
           >
-            {darkMode ? 'Light Mode' : 'Dark Mode'}
+            {darkMode ? 'Light' : 'Dark'}
           </button>
         </div>
 
+        {/* FORM */}
+        <div className={`p-6 rounded-3xl mb-8 ${darkMode ? 'bg-zinc-900' : 'bg-white'}`}>
+          <h2 className="text-xl font-bold mb-4">
+            {editingId ? 'Edit Destination' : 'Add Destination'}
+          </h2>
+
+          <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-4">
+
+            <input
+              placeholder="Name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="p-3 border rounded bg-transparent"
+            />
+
+            <input
+              placeholder="Country"
+              value={form.country}
+              onChange={(e) => setForm({ ...form, country: e.target.value })}
+              className="p-3 border rounded bg-transparent"
+            />
+
+            {/* LOCATION */}
+            <div className="md:col-span-2">
+              <input
+                placeholder="Search location"
+                value={locationQuery}
+                onChange={(e) => setLocationQuery(e.target.value)}
+                className="p-3 border rounded w-full"
+              />
+
+              <button
+                type="button"
+                onClick={searchLocation}
+                className="mt-2 bg-indigo-600 text-white px-4 py-2 rounded"
+              >
+                Search
+              </button>
+
+              {locationResults.map((p) => (
+                <button
+                  key={p.place_id}
+                  type="button"
+                  onClick={async () => {
+                    const name = p.display_name.split(',')[0]
+                    const country = p.display_name.split(',').slice(-1)[0]
+                    const image = await fetchPlaceImage(name)
+
+                    setForm({
+                      ...form,
+                      name,
+                      country,
+                      lat: p.lat,
+                      lng: p.lon,
+                      image: image || ''
+                    })
+
+                    setLocationResults([])
+                    setLocationQuery(p.display_name)
+                  }}
+                  className="block w-full text-left p-2 border-b"
+                >
+                  {p.display_name}
+                </button>
+              ))}
+            </div>
+
+            <input
+              placeholder="Image URL"
+              value={form.image}
+              onChange={(e) => setForm({ ...form, image: e.target.value })}
+              className="p-3 border md:col-span-2 rounded bg-transparent"
+            />
+
+            {/* IMAGE PREVIEW FIXED */}
+            {form.image && (
+              <img
+                src={form.image}
+                className="md:col-span-2 h-48 object-cover rounded"
+              />
+            )}
+
+            <textarea
+              placeholder="Notes"
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="p-3 border md:col-span-2 rounded bg-transparent"
+            />
+
+            <button className="bg-indigo-600 text-white p-3 rounded">
+              {editingId ? 'Update' : 'Add'}
+            </button>
+
+            {editingId && (
+              <button type="button" onClick={cancelEdit} className="bg-gray-600 text-white p-3 rounded">
+                Cancel
+              </button>
+            )}
+
+          </form>
+        </div>
+
+        {/* MAP */}
+        <MapContainer
+          center={[20, 0]}
+          zoom={2}
+          minZoom={2}
+          maxZoom={6}
+          worldCopyJump={false}
+          maxBounds={[
+            [-85, -180],
+            [85, 180]
+          ]}
+          maxBoundsViscosity={1.0}
+          style={{ height: '500px', width: '100%' }}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            noWrap
+          />
+
+          {filtered.map((d) =>
+            d.lat && d.lng ? (
+              <Marker key={d.id} position={[d.lat, d.lng]}>
+                <Popup>
+                  <b>{d.name}</b>
+                  <br />
+                  {d.country}
+                </Popup>
+              </Marker>
+            ) : null
+          )}
+        </MapContainer>
+
         {/* SEARCH + FILTER */}
-        <div className="flex gap-2 mb-4 max-w-md">
+        <div className="flex gap-4 mt-8">
           <input
+            className="p-3 border flex-1"
             placeholder="Search..."
             value={search}
-            onChange={(e) =>
-              setSearch(e.target.value)
-            }
-            className="border p-2 flex-1 text-black"
+            onChange={(e) => setSearch(e.target.value)}
           />
 
           <select
+            className="p-3 border"
             value={filter}
-            onChange={(e) =>
-              setFilter(e.target.value)
-            }
-            className="border p-2 text-black"
+            onChange={(e) => setFilter(e.target.value)}
           >
             <option>All</option>
             <option>Visited</option>
@@ -177,164 +372,34 @@ export default function App() {
           </select>
         </div>
 
-        {/* LOCATION SEARCH */}
-        <div className="mb-4 max-w-md">
-          <label className="block mb-2 font-semibold">
-            Search Location
-          </label>
+        {/* LIST */}
+        <div className="grid md:grid-cols-3 gap-6 mt-10">
+          {filtered.map((d) => (
+            <div key={d.id} className="bg-white rounded-xl overflow-hidden shadow">
 
-          <div className="flex gap-2">
-            <input
-              placeholder="Search place..."
-              value={locationQuery}
-              onChange={(e) =>
-                setLocationQuery(e.target.value)
-              }
-              className="border p-2 flex-1 text-black"
-            />
+              <img src={d.image} className="h-52 w-full object-cover" />
 
-            <button
-              type="button"
-              onClick={searchLocation}
-              className="bg-indigo-600 text-white px-3 rounded"
-            >
-              Search
-            </button>
-          </div>
+              <div className="p-4">
+                <h3 className="font-bold">{d.name}</h3>
+                <p>{d.country}</p>
 
-          {locationResults.length > 0 && (
-            <div className="border mt-2 max-h-48 overflow-y-auto bg-white text-black">
-              {locationResults.map((place) => (
-                <button
-                  key={place.place_id}
-                  type="button"
-                  className="w-full text-left p-2 hover:bg-gray-200"
-                  onClick={() => {
-                    const parts =
-                      place.display_name.split(',')
-
-                    setForm({
-                      ...form,
-                      name: parts[0].trim(),
-                      country:
-                        parts[
-                          parts.length - 1
-                        ].trim(),
-                      lat: place.lat,
-                      lng: place.lon
-                    })
-
-                    setLocationQuery(
-                      place.display_name
-                    )
-                    setLocationResults([])
-                  }}
-                >
-                  {place.display_name}
+                <button onClick={() => toggleVisited(d.id)} className="bg-green-600 text-white px-3 py-1 rounded mt-2">
+                  {d.visited ? 'Visited' : 'Wishlist'}
                 </button>
-              ))}
+
+                <button onClick={() => startEdit(d)} className="bg-blue-600 text-white px-3 py-1 rounded ml-2">
+                  Edit
+                </button>
+
+                <button onClick={() => removeDestination(d.id)} className="bg-red-600 text-white px-3 py-1 rounded ml-2">
+                  Delete
+                </button>
+
+              </div>
             </div>
-          )}
+          ))}
         </div>
 
-        {/* FORM */}
-        <form
-          onSubmit={handleSubmit}
-          className="grid gap-2 mb-6 max-w-md"
-        >
-          <input
-            placeholder="Name"
-            value={form.name}
-            onChange={(e) =>
-              setForm({ ...form, name: e.target.value })
-            }
-          />
-
-          <input
-            placeholder="Country"
-            value={form.country}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                country: e.target.value
-              })
-            }
-          />
-
-          <input
-            placeholder="Latitude"
-            value={form.lat}
-            onChange={(e) =>
-              setForm({ ...form, lat: e.target.value })
-            }
-          />
-
-          <input
-            placeholder="Longitude"
-            value={form.lng}
-            onChange={(e) =>
-              setForm({ ...form, lng: e.target.value })
-            }
-          />
-
-          <button className="bg-blue-600 text-white p-2 rounded">
-            Add Destination
-          </button>
-        </form>
-
-        {/* MAP */}
-        <div className="rounded-xl overflow-hidden shadow">
-          <MapContainer
-            center={[20, 0]}
-            zoom={2}
-            style={{
-              height: '500px',
-              width: '100%'
-            }}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="&copy; OpenStreetMap contributors"
-            />
-
-            {filtered.map((d) => (
-              <Marker
-                key={d.id}
-                position={[d.lat, d.lng]}
-              >
-                <Popup>
-                  <div>
-                    <b>{d.name}</b>
-                    <br />
-                    {d.country}
-                    <br /><br />
-
-                    <button
-                      onClick={() =>
-                        toggleVisited(d.id)
-                      }
-                    >
-                      {d.visited
-                        ? 'Visited'
-                        : 'Mark Visited'}
-                    </button>
-
-                    <br />
-
-                    <button
-                      onClick={() =>
-                        removeDestination(d.id)
-                      }
-                      style={{ color: 'red' }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
-        </div>
       </div>
     </div>
   )

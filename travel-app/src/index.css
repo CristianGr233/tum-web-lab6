@@ -4,15 +4,8 @@ html, body, #root {
   height: 100%;
 }
 
-/* Remove the focus outline and default border from Leaflet */
 .leaflet-container {
   outline: none;
   border: none;
   background: transparent !important;
-}
-
-/* Optional: If the "gray border" is actually the background of the 
-   MapContainer div before tiles load, this ensures it matches your theme */
-.leaflet-container {
-  background-color: transparent !important;
 }
