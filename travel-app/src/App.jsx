@@ -7,25 +7,17 @@ export default function App() {
       id: 1,
       name: 'Tokyo',
       country: 'Japan',
-      category: 'City',
-      rating: 5,
-      visited: false,
-      notes: '',
       lat: 35.6764,
       lng: 139.6500,
-      image: ''
+      visited: false
     },
     {
       id: 2,
       name: 'Santorini',
       country: 'Greece',
-      category: 'Beach',
-      rating: 4,
-      visited: true,
-      notes: '',
       lat: 36.3932,
       lng: 25.4615,
-      image: ''
+      visited: true
     }
   ]
 
@@ -34,10 +26,13 @@ export default function App() {
     return saved ? JSON.parse(saved) : defaultDestinations
   })
 
-  const [search] = useState('')
-  const [filter] = useState('All')
+  const [form, setForm] = useState({
+    name: '',
+    country: '',
+    lat: '',
+    lng: ''
+  })
 
-  // Persist to localStorage
   useEffect(() => {
     localStorage.setItem(
       'travel-destinations',
@@ -45,21 +40,29 @@ export default function App() {
     )
   }, [destinations])
 
-  // Basic filter logic (kept simple for now)
-  const filtered = destinations.filter((d) => {
-    const matchSearch = d.name
-      .toLowerCase()
-      .includes(search.toLowerCase())
+  const handleSubmit = (e) => {
+    e.preventDefault()
 
-    const matchFilter =
-      filter === 'All'
-        ? true
-        : filter === 'Visited'
-        ? d.visited
-        : !d.visited
+    if (!form.name || !form.country) return
 
-    return matchSearch && matchFilter
-  })
+    const newDestination = {
+      id: Date.now(),
+      name: form.name,
+      country: form.country,
+      lat: parseFloat(form.lat),
+      lng: parseFloat(form.lng),
+      visited: false
+    }
+
+    setDestinations([newDestination, ...destinations])
+
+    setForm({
+      name: '',
+      country: '',
+      lat: '',
+      lng: ''
+    })
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 p-6">
@@ -67,32 +70,72 @@ export default function App() {
         Travel Tracker
       </h1>
 
-      <div className="rounded-2xl overflow-hidden shadow">
-        <MapContainer
-          center={[20, 0]}
-          zoom={2}
-          style={{ height: '500px', width: '100%' }}
-        >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
-          />
+      {/* FORM */}
+      <form
+        onSubmit={handleSubmit}
+        className="grid gap-2 mb-6 max-w-md"
+      >
+        <input
+          placeholder="Name"
+          value={form.name}
+          onChange={(e) =>
+            setForm({ ...form, name: e.target.value })
+          }
+        />
 
-          {filtered.map((d) => (
-            <Marker
-              key={d.id}
-              position={[d.lat, d.lng]}
-            >
-              <Popup>
-                <div>
-                  <h3 className="font-bold">{d.name}</h3>
-                  <p>{d.country}</p>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
-      </div>
+        <input
+          placeholder="Country"
+          value={form.country}
+          onChange={(e) =>
+            setForm({ ...form, country: e.target.value })
+          }
+        />
+
+        <input
+          placeholder="Latitude"
+          value={form.lat}
+          onChange={(e) =>
+            setForm({ ...form, lat: e.target.value })
+          }
+        />
+
+        <input
+          placeholder="Longitude"
+          value={form.lng}
+          onChange={(e) =>
+            setForm({ ...form, lng: e.target.value })
+          }
+        />
+
+        <button className="bg-blue-600 text-white p-2 rounded">
+          Add Destination
+        </button>
+      </form>
+
+      {/* MAP */}
+      <MapContainer
+        center={[20, 0]}
+        zoom={2}
+        style={{ height: '500px', width: '100%' }}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap contributors"
+        />
+
+        {destinations.map((d) => (
+          <Marker
+            key={d.id}
+            position={[d.lat, d.lng]}
+          >
+            <Popup>
+              <b>{d.name}</b>
+              <br />
+              {d.country}
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
     </div>
   )
 }
