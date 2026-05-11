@@ -40,7 +40,9 @@ export default function App() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
 
-  // persist destinations
+  const [locationQuery, setLocationQuery] = useState('')
+  const [locationResults, setLocationResults] = useState([])
+
   useEffect(() => {
     localStorage.setItem(
       'travel-destinations',
@@ -48,7 +50,6 @@ export default function App() {
     )
   }, [destinations])
 
-  // persist theme
   useEffect(() => {
     localStorage.setItem(
       'travel-theme',
@@ -96,6 +97,23 @@ export default function App() {
     )
   }
 
+  const searchLocation = async () => {
+    if (!locationQuery.trim()) return
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          locationQuery
+        )}`
+      )
+
+      const data = await res.json()
+      setLocationResults(data)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   const filtered = destinations.filter((d) => {
     const matchSearch =
       d.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -128,9 +146,7 @@ export default function App() {
           </h1>
 
           <button
-            onClick={() =>
-              setDarkMode(!darkMode)
-            }
+            onClick={() => setDarkMode(!darkMode)}
             className="px-4 py-2 rounded bg-indigo-600 text-white"
           >
             {darkMode ? 'Light Mode' : 'Dark Mode'}
@@ -161,6 +177,66 @@ export default function App() {
           </select>
         </div>
 
+        {/* LOCATION SEARCH */}
+        <div className="mb-4 max-w-md">
+          <label className="block mb-2 font-semibold">
+            Search Location
+          </label>
+
+          <div className="flex gap-2">
+            <input
+              placeholder="Search place..."
+              value={locationQuery}
+              onChange={(e) =>
+                setLocationQuery(e.target.value)
+              }
+              className="border p-2 flex-1 text-black"
+            />
+
+            <button
+              type="button"
+              onClick={searchLocation}
+              className="bg-indigo-600 text-white px-3 rounded"
+            >
+              Search
+            </button>
+          </div>
+
+          {locationResults.length > 0 && (
+            <div className="border mt-2 max-h-48 overflow-y-auto bg-white text-black">
+              {locationResults.map((place) => (
+                <button
+                  key={place.place_id}
+                  type="button"
+                  className="w-full text-left p-2 hover:bg-gray-200"
+                  onClick={() => {
+                    const parts =
+                      place.display_name.split(',')
+
+                    setForm({
+                      ...form,
+                      name: parts[0].trim(),
+                      country:
+                        parts[
+                          parts.length - 1
+                        ].trim(),
+                      lat: place.lat,
+                      lng: place.lon
+                    })
+
+                    setLocationQuery(
+                      place.display_name
+                    )
+                    setLocationResults([])
+                  }}
+                >
+                  {place.display_name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* FORM */}
         <form
           onSubmit={handleSubmit}
@@ -178,7 +254,10 @@ export default function App() {
             placeholder="Country"
             value={form.country}
             onChange={(e) =>
-              setForm({ ...form, country: e.target.value })
+              setForm({
+                ...form,
+                country: e.target.value
+              })
             }
           />
 
@@ -208,7 +287,10 @@ export default function App() {
           <MapContainer
             center={[20, 0]}
             zoom={2}
-            style={{ height: '500px', width: '100%' }}
+            style={{
+              height: '500px',
+              width: '100%'
+            }}
           >
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
