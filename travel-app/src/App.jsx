@@ -64,6 +64,22 @@ export default function App() {
     })
   }
 
+  const removeDestination = (id) => {
+    setDestinations(
+      destinations.filter((d) => d.id !== id)
+    )
+  }
+
+  const toggleVisited = (id) => {
+    setDestinations(
+      destinations.map((d) =>
+        d.id === id
+          ? { ...d, visited: !d.visited }
+          : d
+      )
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 p-6">
       <h1 className="text-3xl font-bold mb-4">
@@ -129,9 +145,33 @@ export default function App() {
             position={[d.lat, d.lng]}
           >
             <Popup>
-              <b>{d.name}</b>
-              <br />
-              {d.country}
+              <div>
+                <b>{d.name}</b>
+                <br />
+                {d.country}
+                <br /><br />
+
+                <button
+                  onClick={() =>
+                    toggleVisited(d.id)
+                  }
+                >
+                  {d.visited
+                    ? 'Visited'
+                    : 'Mark Visited'}
+                </button>
+
+                <br />
+
+                <button
+                  onClick={() =>
+                    removeDestination(d.id)
+                  }
+                  style={{ color: 'red' }}
+                >
+                  Delete
+                </button>
+              </div>
             </Popup>
           </Marker>
         ))}
